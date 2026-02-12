@@ -48,7 +48,10 @@ st.markdown(
 # -----------------------------
 # Env helpers
 # -----------------------------
-def get_env cookies(name: str, default: str | None = None) -> str:
+# -----------------------------
+# Env helpers
+# -----------------------------
+def get_env(name: str, default: str | None = None) -> str:
     # Works with Streamlit secrets OR environment variables
     if name in st.secrets:
         return str(st.secrets[name])
@@ -57,7 +60,12 @@ def get_env cookies(name: str, default: str | None = None) -> str:
         raise RuntimeError(f"Missing required config: {name}")
     return v
 
-# Cookie manager (must be defined AFTER get_env)
+
+# -----------------------------
+# Cookie manager (must be AFTER get_env)
+# -----------------------------
+from streamlit_cookies_manager import EncryptedCookieManager
+
 cookies = EncryptedCookieManager(
     prefix="wtapp/",
     password=get_env("COOKIE_PASSWORD", "change-me-to-a-long-random-string"),
@@ -65,6 +73,7 @@ cookies = EncryptedCookieManager(
 
 if not cookies.ready():
     st.stop()
+
 
 
 
