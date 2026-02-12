@@ -17,13 +17,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed",
 )
-cookies = EncryptedCookieManager(
-    prefix="wtapp/",
-    password=get_env("COOKIE_PASSWORD", "change-me-to-a-long-random-string"),
-)
-
-if not cookies.ready():
-    st.stop()
 def persist_login(session_dict: dict):
     # Store refresh_token so we can restore login after refresh
     rt = session_dict.get("refresh_token")
@@ -55,7 +48,14 @@ st.markdown(
 # -----------------------------
 # Env helpers
 # -----------------------------
-def get_env(name: str, default: str | None = None) -> str:
+def get_env cookies = EncryptedCookieManager(
+    prefix="wtapp/",
+    password=get_env("COOKIE_PASSWORD", "change-me-to-a-long-random-string"),
+)
+
+if not cookies.ready():
+    st.stop()
+(name: str, default: str | None = None) -> str:
     # Works with Streamlit secrets OR environment variables
     if name in st.secrets:
         return str(st.secrets[name])
