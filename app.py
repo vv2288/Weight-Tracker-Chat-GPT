@@ -555,23 +555,27 @@ def app_screen():
 # Router
 # -----------------------------
 def main():
+    # Attempt restore from cookie if session_state is empty
+    if ("sb_session" not in st.session_state or "sb_user" not in st.session_state) and "refresh_token" in cookies:
+        try:
+            client = supabase_client()
+            refreshed = client.auth.refresh_session(cookies["refresh_token"])
+            if hasattr(refreshed, "model_dump"):
+                refreshed = refreshed.model_dump()
+            st.session_state["sb_session"] = refreshed
+            st.session_state["sb_user"] = refreshed.get("user")
+        except Exception:
+            clear_persisted_login()
+
+    # If still not logged in → show auth
     if "sb_session" not in st.session_state or "sb_user" not in st.session_state:
-        # Attempt restore from cookie if session_state is empty
-if ("sb_session" not in st.session_state or "sb_user" not in st.session_state) and "refresh_token" in cookies:
-    try:
-        client = supabase_client()
-        refreshed = client.auth.refresh_session(cookies["refresh_token"])
-        if hasattr(refreshed, "model_dump"):
-            refreshed = refreshed.model_dump()
-        st.session_state["sb_session"] = refreshed
-        st.session_state["sb_user"] = refreshed.get("user")
-    except Exception:
-        # token expired/invalid — clear it and show login
-        clear_persisted_login()
         auth_screen()
         return
+
+    # Otherwise → show app
     app_screen()
 
 
 if __name__ == "__main__":
     main()
+
