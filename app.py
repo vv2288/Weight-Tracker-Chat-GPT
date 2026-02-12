@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from supabase import create_client, Client
+from streamlit_cookies_manager import EncryptedCookieManager
+
 
 # -----------------------------
 # App config / UI
@@ -15,6 +17,25 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed",
 )
+cookies = EncryptedCookieManager(
+    prefix="wtapp/",
+    password=get_env("COOKIE_PASSWORD", "change-me-to-a-long-random-string"),
+)
+
+if not cookies.ready():
+    st.stop()
+def persist_login(session_dict: dict):
+    # Store refresh_token so we can restore login after refresh
+    rt = session_dict.get("refresh_token")
+    if rt:
+        cookies["refresh_token"] = rt
+        cookies.save()
+
+
+def clear_persisted_login():
+    if "refresh_token" in cookies:
+        del cookies["refresh_token"]
+        cookies.save()
 
 # Minimal UI polish
 st.markdown(
@@ -76,6 +97,7 @@ def sign_in(email: str, password: str):
 
 
 def sign_out():
+    clear_persisted_login()
     st.session_state.pop("sb_session", None)
     st.session_state.pop("sb_user", None)
 
@@ -338,6 +360,7 @@ def auth_screen():
                     user = user.model_dump()
                 st.session_state["sb_session"] = sess
                 st.session_state["sb_user"] = user
+                persist_login(sess)
                 st.success("Logged in.")
                 st.rerun()
             except Exception as e:
@@ -533,6 +556,18 @@ def app_screen():
 # -----------------------------
 def main():
     if "sb_session" not in st.session_state or "sb_user" not in st.session_state:
+        # Attempt restore from cookie if session_state is empty
+if ("sb_session" not in st.session_state or "sb_user" not in st.session_state) and "refresh_token" in cookies:
+    try:
+        client = supabase_client()
+        refreshed = client.auth.refresh_session(cookies["refresh_token"])
+        if hasattr(refreshed, "model_dump"):
+            refreshed = refreshed.model_dump()
+        st.session_state["sb_session"] = refreshed
+        st.session_state["sb_user"] = refreshed.get("user")
+    except Exception:
+        # token expired/invalid — clear it and show login
+        clear_persisted_login()
         auth_screen()
         return
     app_screen()
